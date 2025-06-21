@@ -1,7 +1,8 @@
 import os
 import streamlit as st
 
-import openai
+
+from openai import AzureOpenAI
 from pdf_to_ppt import pdf_to_ppt
 
 st.title("PDF to PowerPoint Summary")
@@ -17,14 +18,17 @@ if st.button("Generate PowerPoint") and uploaded_file:
     with open("input.pdf", "wb") as f:
         f.write(uploaded_file.read())
 
-    openai.api_type = "azure"
-    openai.api_base = api_base
-    openai.api_version = api_version
-    openai.api_key = api_key
+
+    client = AzureOpenAI(
+        api_key=api_key,
+        api_version=api_version,
+        azure_endpoint=api_base,
+    )
 
     output_path = "output.pptx"
     with st.spinner("Processing PDF..."):
-        pdf_to_ppt("input.pdf", output_path, deployment)
+        pdf_to_ppt("input.pdf", output_path, client, deployment)
+
 
     with open(output_path, "rb") as f:
         st.download_button(
