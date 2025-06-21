@@ -53,6 +53,7 @@ from openai import AzureOpenAI
 
 
 def summarize_text(text: str, client: AzureOpenAI, deployment: str, max_tokens: int = 256) -> List[str]:
+
     """Use Azure OpenAI to summarize text into bullet points."""
     system_prompt = (
         "Summarize the following text into at most 5 concise bullet points."
@@ -69,6 +70,7 @@ def summarize_text(text: str, client: AzureOpenAI, deployment: str, max_tokens: 
         max_tokens=max_tokens,
     )
     content = response.choices[0].message.content
+
     bullets = [line.lstrip("- ").strip() for line in content.splitlines() if line]
     return bullets
 
@@ -78,6 +80,7 @@ def pdf_to_ppt(pdf_path: str, output_path: str, client: AzureOpenAI, deployment:
     for page_num, text, images in extract_pages(pdf_path):
         title = f"Page {page_num}"
         bullets = summarize_text(text, client, deployment)
+
         sections.append((title, bullets, images))
     save_presentation(sections, output_path)
 

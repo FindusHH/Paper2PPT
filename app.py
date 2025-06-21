@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 
+
 from openai import AzureOpenAI
 from pdf_to_ppt import pdf_to_ppt
 
@@ -17,6 +18,7 @@ if st.button("Generate PowerPoint") and uploaded_file:
     with open("input.pdf", "wb") as f:
         f.write(uploaded_file.read())
 
+
     client = AzureOpenAI(
         api_key=api_key,
         api_version=api_version,
@@ -26,6 +28,7 @@ if st.button("Generate PowerPoint") and uploaded_file:
     output_path = "output.pptx"
     with st.spinner("Processing PDF..."):
         pdf_to_ppt("input.pdf", output_path, client, deployment)
+
 
     with open(output_path, "rb") as f:
         st.download_button(
