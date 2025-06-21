@@ -1,0 +1,11 @@
+version: "3"
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      OPENAI_API_KEY: "YOUR_API_KEY"
+      OPENAI_API_BASE: "YOUR_ENDPOINT"
+      OPENAI_API_VERSION: "2023-07-01-preview"
+      OPENAI_DEPLOYMENT: "DEPLOYMENT_NAME"
