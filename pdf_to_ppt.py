@@ -230,7 +230,8 @@ def summarize_text(
         # Rebuild the bullet string
 
         trimmed.append(" ".join(words))
-    return trimmed
+    # We ask the language model whether the image clarifies the given
+    # page text. The API expects a data URL for the image content.
 
 
 def generate_title(
