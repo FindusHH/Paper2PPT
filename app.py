@@ -41,11 +41,34 @@ def save_config(data: dict):
         json.dump(data, f)
 
 
+
+CONFIG_FILE = "config.json"
+
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {
+        "api_base": os.getenv("OPENAI_API_BASE", ""),
+        "api_key": os.getenv("OPENAI_API_KEY", ""),
+        "api_version": os.getenv("OPENAI_API_VERSION", "2023-07-01-preview"),
+        "deployment": os.getenv("OPENAI_DEPLOYMENT", ""),
+    }
+
+
+def save_config(data: dict):
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+
 st.title("PDF to PowerPoint Summary")
 
 config = load_config()
 
+
 edit_prompt = st.sidebar.checkbox("Edit Prompt")
+
 
 # Show configuration editor if no config is present or user requests it
 edit_config = False
@@ -79,12 +102,14 @@ else:
     api_version = config.get("api_version", "2023-07-01-preview")
     deployment = config.get("deployment", "")
 
+
 if edit_prompt:
     current_prompt = load_prompt()
     new_prompt = st.text_area("System Prompt", value=current_prompt, height=200)
     if st.button("Save Prompt"):
         save_prompt(new_prompt)
         st.success("Prompt saved.")
+
 
 uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
 
