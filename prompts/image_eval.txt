@@ -1,3 +1,2 @@
 
 Rate how much the image helps understand the accompanying text on a scale from 0 (irrelevant) to 10 (very relevant). Respond with a single number.
-

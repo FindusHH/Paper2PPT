@@ -73,6 +73,8 @@ def save_prompt(content: str, path: Path = PROMPT_PATH) -> None:
 SYSTEM_PROMPT = load_prompt()
 IMAGE_PROMPT = load_prompt(IMAGE_PROMPT_PATH)
 TITLE_PROMPT = load_prompt(TITLE_PROMPT_PATH)
+
+
 SETTINGS = load_settings()
 
 
@@ -90,17 +92,13 @@ def extract_pages(pdf_path: str):
         text = page.get_text("text")
         images = []
         for img in page.get_images(full=True):
-    body_placeholder.top = Inches(1.0)
-    body_placeholder.height = Inches(4.0)
-    if images:
-        body_placeholder.width = Inches(5)
-        pic_left = Inches(5.6)
-    else:
-        body_placeholder.width = Inches(9)
-        pic_left = None
-        size = min(SETTINGS.get("font_size", 24), 32)
-        p.font.size = Pt(size)
-        slide.shapes.add_picture(image_stream, pic_left, Inches(1.5), height=Inches(4))
+            xref = img[0]
+            base_image = doc.extract_image(xref)
+            image_bytes = base_image["image"]
+            ext = base_image["ext"]
+            images.append((image_bytes, ext))
+        yield page_num + 1, text, images
+
     # Close the document to free resources
     doc.close()
 
@@ -128,11 +126,15 @@ def create_slide(prs: Presentation, title: str, bullets: List[str], images: List
 
     body_placeholder = slide.shapes.placeholders[1]
     body_placeholder.left = Inches(0.5)
-    body_placeholder.top = Inches(1.5)
-    body_placeholder.width = Inches(5)
-    body_placeholder.height = Inches(4.5)
+    body_placeholder.top = Inches(1.0)
+    body_placeholder.height = Inches(4.0)
+    if images:
+        body_placeholder.width = Inches(5)
+        pic_left = Inches(5.6)
+    else:
+        body_placeholder.width = Inches(9)
+        pic_left = None
     body = body_placeholder.text_frame
-
     # Remove any existing text from the placeholder
     body.clear()
 
@@ -140,13 +142,13 @@ def create_slide(prs: Presentation, title: str, bullets: List[str], images: List
         p = body.add_paragraph()
         p.text = point
         p.level = 0
-        p.font.size = Pt(SETTINGS.get("font_size", 24))
 
-
+        size = min(SETTINGS.get("font_size", 24), 32)
+        p.font.size = Pt(size)
     if images:
         img_bytes, ext = images[0]
         image_stream = io.BytesIO(img_bytes)
-        slide.shapes.add_picture(image_stream, Inches(5.6), Inches(1.5), height=Inches(4))
+        slide.shapes.add_picture(image_stream, pic_left, Inches(1.5), height=Inches(4))
 
 
 def _add_bullet_slides(prs: Presentation, title: str, bullets: List[str], images: List[bytes]):
@@ -166,28 +168,11 @@ def save_presentation(sections, output_path: str):
 
     prs = Presentation()
     # Add each section of content as one or more slides
-    content = response.choices[0].message.content or ""
-    content = response.choices[0].message.content
-    if content:
-        text = content.strip().strip('"')
-        return text
-    return ""
 
-    progress_callback=None,
-    # Reload settings in case they were changed
-    global SETTINGS
-    SETTINGS = load_settings()
+    for title, bullets, images in sections:
+        _add_bullet_slides(prs, title, bullets, images)
+    # Finally write the presentation to disk
 
-    # Determine total page count for progress reporting
-    doc = fitz.open(pdf_path)
-    total_pages = len(doc)
-    doc.close()
-    for idx, (page_num, text, images) in enumerate(extract_pages(pdf_path), 1):
-        if progress_callback:
-            progress_callback(idx, total_pages, f"Page {idx}/{total_pages}")
-
-    if progress_callback:
-        progress_callback(total_pages, total_pages, "Completed")
     prs.save(output_path)
 
 
@@ -227,7 +212,7 @@ def summarize_text(
         messages=messages,
         max_tokens=max_tokens,
     )
-    content = response.choices[0].message.content
+    content = response.choices[0].message.content or ""
 
     bullets = [line.lstrip("- ").strip() for line in content.splitlines() if line]
     trimmed = []
@@ -278,7 +263,12 @@ def generate_title(
         messages=messages,
         max_tokens=max_tokens,
     )
-    return response.choices[0].message.content.strip()
+
+    content = response.choices[0].message.content
+    if content:
+        text = content.strip().strip('"')
+        return text
+    return ""
 
 
 
@@ -318,44 +308,6 @@ def evaluate_image_relevance(
         return 0.0
 
 
-def evaluate_image_relevance(
-    page_text: str,
-    image: bytes,
-    ext: str,
-    client: AzureOpenAI,
-    deployment: str,
-    *,
-    max_tokens: int = 8,
-) -> float:
-    """Return an image relevance score between 0 and 10."""
-
-
-
-    b64 = base64.b64encode(image).decode("utf-8")
-    mime = f"data:image/{ext};base64,{b64}"
-    messages = [
-        {"role": "system", "content": IMAGE_PROMPT},
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": page_text},
-                {"type": "image_url", "image_url": {"url": mime}},
-            ],
-        },
-    ]
-    try:
-        response = client.chat.completions.create(
-            model=deployment,
-            messages=messages,
-            max_tokens=max_tokens,
-        )
-        answer = response.choices[0].message.content.strip()
-        return float(answer)
-    except Exception:
-        return 0.0
-
-
-
 
 def pdf_to_ppt(
     pdf_path: str,
@@ -364,14 +316,28 @@ def pdf_to_ppt(
     deployment: str,
     *,
     language: str = "",
+
+    progress_callback=None,
 ) -> None:
+    # Reload settings in case they were changed
+    global SETTINGS
+    SETTINGS = load_settings()
+
 
     # Collect (title, bullets, [image]) tuples for each page
     sections = []
     # Minimum relevance score an image must achieve to be used
     min_score = SETTINGS.get("min_image_score", 5)
+
+    # Determine total page count for progress reporting
+    doc = fitz.open(pdf_path)
+    total_pages = len(doc)
+    doc.close()
     # Process each page of the PDF individually
-    for page_num, text, images in extract_pages(pdf_path):
+    for idx, (page_num, text, images) in enumerate(extract_pages(pdf_path), 1):
+        if progress_callback:
+            progress_callback(idx, total_pages, f"Page {idx}/{total_pages}")
+
         title = generate_title(text, client, deployment, language=language)
         bullets = summarize_text(text, client, deployment, language=language)
         best_img = None
@@ -385,7 +351,9 @@ def pdf_to_ppt(
         relevant_images = [best_img] if best_img and best_score >= min_score else []
 
         sections.append((title, bullets, relevant_images))
-        
+
     # Write all collected slides to the output file
     save_presentation(sections, output_path)
+    if progress_callback:
+        progress_callback(total_pages, total_pages, "Completed")
 
