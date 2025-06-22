@@ -12,6 +12,7 @@ from pdf_to_ppt import (
 )
 
 
+
 CONFIG_FILE = "config.json"
 
 LANGUAGE_OPTIONS = {
@@ -22,27 +23,6 @@ LANGUAGE_OPTIONS = {
 }
 
 LANGUAGE_NAMES = {v: k for k, v in LANGUAGE_OPTIONS.items()}
-
-
-def load_config():
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {
-        "api_base": os.getenv("OPENAI_API_BASE", ""),
-        "api_key": os.getenv("OPENAI_API_KEY", ""),
-        "api_version": os.getenv("OPENAI_API_VERSION", "2023-07-01-preview"),
-        "deployment": os.getenv("OPENAI_DEPLOYMENT", ""),
-    }
-
-
-def save_config(data: dict):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f)
-
-
-
-CONFIG_FILE = "config.json"
 
 
 def load_config():

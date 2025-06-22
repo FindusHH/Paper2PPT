@@ -5,8 +5,12 @@ from typing import List
 
 from langdetect import detect
 
+# Path to the system prompt used for summarization
+PROMPT_FILE = os.path.join(os.path.dirname(__file__), "prompts", "summarize.txt")
 
 
+
+def load_prompt() -> str:
 
 
 def load_prompt() -> str:
@@ -19,6 +23,7 @@ def load_prompt() -> str:
         # Fallback prompt if the file does not exist
         return (
             "Summarize the following text into at most 5 concise bullet points."
+
 
             " Respond in {language}."
         )
