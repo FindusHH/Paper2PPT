@@ -1,8 +1,10 @@
+
 """Streamlit UI for converting PDF files to PowerPoint
 with Azure OpenAI summarization.
 
 The app loads prompts and settings from disk and allows
 users to edit them via the sidebar."""
+
 
 import json
 import os
@@ -23,6 +25,7 @@ from pdf_to_ppt import (
     detect_pdf_language,
     load_prompt,
     save_prompt,
+
     IMAGE_PROMPT_PATH,
     TITLE_PROMPT_PATH,
     load_settings,
@@ -59,6 +62,7 @@ TRANSLATIONS = {
         "summarization": "Idioma del resumen",
     },
     "zh": {
+
         "title": "PDF\u8f6cPowerPoint\u6458\u8981",
         "upload": "\u4e0a\u4f20PDF",
         "generate": "\u751f\u6210PPT",
@@ -200,6 +204,7 @@ if edit_settings:
 
 uploaded_file = st.file_uploader(TR["upload"], type=["pdf"], disabled=processing)
 
+
 language_code = ""
 # When a PDF is uploaded we detect its main language
 if uploaded_file:
@@ -226,12 +231,14 @@ if uploaded_file:
     else:
         language_code = LANGUAGE_OPTIONS[choice]
 
+
     pages_per_slide = st.number_input(
         "Pages per slide",
         min_value=1,
         value=int(SETTINGS.get("pages_per_slide", 1)),
         disabled=processing,
     )
+
 
 generate = st.button(TR["generate"], disabled=processing)
 
@@ -250,11 +257,13 @@ if generate and uploaded_file:
         azure_endpoint=api_base,
     )
 
+
     pdf_name = os.path.splitext(uploaded_file.name)[0]
     output_path = f"{pdf_name}_summary.pptx"
 
     def update_progress(done: int, total: int, message: str) -> None:
         """Update progress widgets while generating slides."""
+
         percent = int(done / total * 100)
         log_messages.append(f"{message} ({percent}%)")
         log_box.text_area("Progress", "\n".join(log_messages), height=200)
@@ -267,9 +276,11 @@ if generate and uploaded_file:
             client,
             deployment,
             language=language_code,
+
             pages_per_slide=int(pages_per_slide),
             progress_callback=update_progress,
         )
+
 
     st.session_state["processing"] = False
     progress_bar.progress(100)
@@ -277,7 +288,9 @@ if generate and uploaded_file:
     log_box.text_area("Progress", "\n".join(log_messages), height=200)
 
     with open(output_path, "rb") as f:
+
         dl = st.download_button(
+
             label="Download PowerPoint",
             data=f,
             file_name=output_path,
