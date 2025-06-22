@@ -24,3 +24,5 @@ docker compose up --build
 2. Open `http://localhost:8501` in your browser. On the first launch you will be asked for your Azure OpenAI API key. Endpoint, deployment and version are pre-filled from the Docker compose file and stored in `config.json` for reuse. You can adjust them later via "Edit Configuration" in the sidebar.
 
 3. Upload a PDF and generate the presentation. The resulting PowerPoint file can be downloaded directly from the interface.
+
+To add more summarization languages, edit the `LANGUAGE_OPTIONS` dictionary in `app.py`.
