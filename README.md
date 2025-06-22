@@ -8,21 +8,22 @@ This application converts a PDF document into a summarized PowerPoint presentati
 - Generates a PowerPoint presentation with up to five bullet points per slide and relevant images.
 - Simple web interface built with Streamlit.
 - Runs inside Docker and can be orchestrated with Docker Compose.
+- All prompts are stored in text files inside `prompts/` and loaded at
+  application start.
+- API credentials are persisted in `config.json` after the first run.
 
 ## Usage
 
-1. Set your Azure OpenAI credentials in `docker-compose.yml` or as environment variables:
-   - `OPENAI_API_KEY`
-   - `OPENAI_API_BASE`
-   - `OPENAI_API_VERSION`
-   - `OPENAI_DEPLOYMENT`
-
-2. Build and start the service:
+1. Build and start the service:
 
 ```bash
 docker compose up --build
 ```
 
-3. Open `http://localhost:8501` in your browser, upload a PDF and generate the presentation.
+2. Open `http://localhost:8501` in your browser. On the first launch you will be
+   asked for your Azure OpenAI credentials. They will be stored in `config.json`
+   and reused on subsequent runs. You can change them later via "Edit
+   Configuration" in the sidebar.
 
-The resulting PowerPoint file can be downloaded directly from the interface.
+3. Upload a PDF and generate the presentation. The resulting PowerPoint file can
+   be downloaded directly from the interface.
