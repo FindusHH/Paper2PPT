@@ -11,6 +11,9 @@ This application converts a PDF document into a summarized PowerPoint presentati
 - All prompts are stored in text files inside `prompts/` and loaded at
   application start.
 - API credentials are persisted in `config.json` after the first run.
+- The summarization language can be chosen (detected from the PDF, German,
+  English, Spanish or Chinese by default).
+- Both the system prompt and API configuration can be edited from the sidebar.
 
 ## Usage
 
@@ -21,8 +24,8 @@ docker compose up --build
 ```
 
 2. Open `http://localhost:8501` in your browser. On the first launch you will be
-   asked for your Azure OpenAI credentials. They will be stored in `config.json`
-   and reused on subsequent runs. You can change them later via "Edit
+   asked for your Azure OpenAI API key. Endpoint, deployment and version are
+   pre-filled from the Docker compose file and can be adjusted later via "Edit
    Configuration" in the sidebar.
 
 3. Upload a PDF and generate the presentation. The resulting PowerPoint file can
