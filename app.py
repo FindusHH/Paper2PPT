@@ -174,15 +174,28 @@ if edit_settings:
         "Max words per title", value=SETTINGS.get("max_words_title", 4), min_value=1
     )
     min_score = st.number_input(
-        "Min image relevance score", value=SETTINGS.get("min_image_score", 5), min_value=0, max_value=10
+        "Min image relevance score", value=float(SETTINGS.get("min_image_score", 5)), min_value=0.0, max_value=10.0
+    )
+    pages_per_slide = st.number_input(
+        "Pages per slide", value=int(SETTINGS.get("pages_per_slide", 1)), min_value=1
+    )
+    languages_json = st.text_area(
+        "Languages JSON", json.dumps(SETTINGS.get("languages", {}), indent=2), height=150
     )
     if st.button("Save Settings"):
+        try:
+            languages = json.loads(languages_json)
+        except json.JSONDecodeError:
+            st.error("Invalid languages JSON")
+            languages = SETTINGS.get("languages", {})
         SETTINGS.update(
             {
                 "font_size": int(font_size),
                 "max_words_per_bullet": int(max_words),
                 "max_words_title": int(max_title),
                 "min_image_score": float(min_score),
+                "pages_per_slide": int(pages_per_slide),
+                "languages": languages,
             }
         )
         with open("settings.json", "w", encoding="utf-8") as f:
@@ -190,6 +203,7 @@ if edit_settings:
         st.success("Settings saved.")
 
 uploaded_file = st.file_uploader(TR["upload"], type=["pdf"], disabled=processing)
+
 
 language_code = ""
 # When a PDF is uploaded we detect its main language
@@ -217,6 +231,15 @@ if uploaded_file:
     else:
         language_code = LANGUAGE_OPTIONS[choice]
 
+
+    pages_per_slide = st.number_input(
+        "Pages per slide",
+        min_value=1,
+        value=int(SETTINGS.get("pages_per_slide", 1)),
+        disabled=processing,
+    )
+
+
 generate = st.button(TR["generate"], disabled=processing)
 
 log_box = st.empty()
@@ -238,7 +261,9 @@ if generate and uploaded_file:
     pdf_name = os.path.splitext(uploaded_file.name)[0]
     output_path = f"{pdf_name}_summary.pptx"
 
-    def update_progress(done, total, message):
+    def update_progress(done: int, total: int, message: str) -> None:
+        """Update progress widgets while generating slides."""
+
         percent = int(done / total * 100)
         log_messages.append(f"{message} ({percent}%)")
         log_box.text_area("Progress", "\n".join(log_messages), height=200)
@@ -251,6 +276,8 @@ if generate and uploaded_file:
             client,
             deployment,
             language=language_code,
+
+            pages_per_slide=int(pages_per_slide),
             progress_callback=update_progress,
         )
 
@@ -261,11 +288,25 @@ if generate and uploaded_file:
     log_box.text_area("Progress", "\n".join(log_messages), height=200)
 
     with open(output_path, "rb") as f:
-        # Offer the resulting file for download
-        st.download_button(
+
+        dl = st.download_button(
+
             label="Download PowerPoint",
             data=f,
             file_name=output_path,
             mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
             type="primary",
         )
+    if dl:
+        pass
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stDownloadButton"] > button {
+            background-color: #28a745;
+            color: white;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )

@@ -7,7 +7,6 @@ import io
 from pathlib import Path
 from typing import List
 import base64
-
 import json
 
 from langdetect import detect
@@ -37,6 +36,10 @@ DEFAULT_SETTINGS = {
     "font_size": 24,
     "max_words_per_bullet": 10,
     "max_words_title": 4,
+
+    "min_image_score": 5,
+    "pages_per_slide": 1,
+
 }
 
 
@@ -227,7 +230,8 @@ def summarize_text(
         # Rebuild the bullet string
 
         trimmed.append(" ".join(words))
-    return trimmed
+    # We ask the language model whether the image clarifies the given
+    # page text. The API expects a data URL for the image content.
 
 
 def generate_title(
@@ -242,16 +246,13 @@ def generate_title(
 
     max_words = SETTINGS.get("max_words_title", 4)
     prompt = TITLE_PROMPT
-
     # Replace placeholders in the title prompt
-
     if "{max_words}" in prompt:
         prompt = prompt.replace("{max_words}", str(max_words))
     if "{language}" in prompt:
         prompt = prompt.replace("{language}", language or "the original language")
     elif language:
         prompt = f"{prompt}\nRespond in {language}."
-
     # Prepare the conversation for the chat completion call
 
     messages = [
@@ -317,43 +318,56 @@ def pdf_to_ppt(
     *,
     language: str = "",
 
+    pages_per_slide: int = 1,
     progress_callback=None,
 ) -> None:
+    """Convert a PDF document to a summarized PowerPoint file.
+
+    ``pages_per_slide`` controls how many PDF pages are combined before
+    generating a single slide. The highest scoring image from that group
+    is used if its relevance surpasses the configured minimum score.
+    """
+
+
     # Reload settings in case they were changed
     global SETTINGS
     SETTINGS = load_settings()
 
 
-    # Collect (title, bullets, [image]) tuples for each page
+    # Collect (title, bullets, [image]) tuples for each group of pages
+
     sections = []
     # Minimum relevance score an image must achieve to be used
     min_score = SETTINGS.get("min_image_score", 5)
 
-    # Determine total page count for progress reporting
-    doc = fitz.open(pdf_path)
-    total_pages = len(doc)
-    doc.close()
-    # Process each page of the PDF individually
-    for idx, (page_num, text, images) in enumerate(extract_pages(pdf_path), 1):
-        if progress_callback:
-            progress_callback(idx, total_pages, f"Page {idx}/{total_pages}")
 
-        title = generate_title(text, client, deployment, language=language)
-        bullets = summarize_text(text, client, deployment, language=language)
+    page_data = list(extract_pages(pdf_path))
+    total_groups = (len(page_data) + pages_per_slide - 1) // pages_per_slide
+
+    for group_idx in range(total_groups):
+        group = page_data[group_idx * pages_per_slide : (group_idx + 1) * pages_per_slide]
+        combined_text = "\n".join(p[1] for p in group)
+        group_images = [img for p in group for img in p[2]]
+        if progress_callback:
+            progress_callback(group_idx + 1, total_groups, f"Part {group_idx + 1}/{total_groups}")
+        title = generate_title(combined_text, client, deployment, language=language)
+        bullets = summarize_text(combined_text, client, deployment, language=language)
+
         best_img = None
         best_score = -1.0
         # Evaluate all images and keep the highest scoring one
-        for img_bytes, ext in images:
-            score = evaluate_image_relevance(text, img_bytes, ext, client, deployment)
+        for img_bytes, ext in group_images:
+            score = evaluate_image_relevance(combined_text, img_bytes, ext, client, deployment)
             if score > best_score:
                 best_score = score
                 best_img = (img_bytes, ext)
+
         relevant_images = [best_img] if best_img and best_score >= min_score else []
 
         sections.append((title, bullets, relevant_images))
-
     # Write all collected slides to the output file
     save_presentation(sections, output_path)
     if progress_callback:
-        progress_callback(total_pages, total_pages, "Completed")
+        progress_callback(total_groups, total_groups, "Completed")
+
 
