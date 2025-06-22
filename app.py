@@ -1,8 +1,10 @@
+
 """Streamlit UI for converting PDF files to PowerPoint
 with Azure OpenAI summarization.
 
 The app loads prompts and settings from disk and allows
 users to edit them via the sidebar."""
+
 
 import json
 import os
@@ -15,6 +17,7 @@ from pdf_to_ppt import (
     detect_pdf_language,
     load_prompt,
     save_prompt,
+
     IMAGE_PROMPT_PATH,
     TITLE_PROMPT_PATH,
     load_settings,
@@ -173,6 +176,7 @@ if uploaded_file:
         language_code = LANGUAGE_OPTIONS[choice]
 
 if st.button(TR["generate"]) and uploaded_file:
+
     with open("input.pdf", "wb") as f:
         f.write(uploaded_file.read())
 

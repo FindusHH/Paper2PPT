@@ -13,14 +13,15 @@ This application converts a PDF document into a summarized PowerPoint presentati
 - Runs inside Docker and can be orchestrated with Docker Compose.
 - All prompts are stored in text files inside `prompts/` and loaded at application start. The default summarization prompt lives in `prompts/summarize.txt` and can be edited from the sidebar.
 - The relevance check prompt for images resides in `prompts/image_eval.txt` and is also editable.
+
 - The title creation prompt is stored in `prompts/title.txt`.
 - API credentials are persisted in `config.json` after the first run.
 - The summarization language can be chosen (detected from the PDF or the languages listed in `settings.json`).
 - Both the system prompt and API configuration can be edited from the sidebar.
 - Formatting options like font size and maximum words per bullet are defined in `settings.json`.
 
-## Usage
 
+## Usage
 1. Build and start the service:
 
 ```bash
@@ -31,4 +32,6 @@ docker compose up --build
 
 3. Upload a PDF and generate the presentation. The resulting PowerPoint file can be downloaded directly from the interface.
 
+
 To add more summarization or UI languages, edit the `languages` section in `settings.json`.
+
