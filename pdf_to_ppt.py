@@ -3,7 +3,9 @@ import os
 from pathlib import Path
 from typing import List
 import base64
+
 import json
+
 
 from langdetect import detect
 
@@ -11,6 +13,7 @@ from langdetect import detect
 PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "summarize.txt"
 # Path to the image relevance evaluation prompt
 IMAGE_PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "image_eval.txt"
+
 # Path to the slide title prompt
 TITLE_PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "title.txt"
 
@@ -38,6 +41,7 @@ def load_settings() -> dict:
     return DEFAULT_SETTINGS
 
 
+
 def load_prompt(path: Path = PROMPT_PATH) -> str:
     """Load the system prompt from the prompts directory."""
     try:
@@ -59,9 +63,11 @@ def save_prompt(content: str, path: Path = PROMPT_PATH) -> None:
 
 SYSTEM_PROMPT = load_prompt()
 IMAGE_PROMPT = load_prompt(IMAGE_PROMPT_PATH)
+
 TITLE_PROMPT = load_prompt(TITLE_PROMPT_PATH)
 
 SETTINGS = load_settings()
+
 
 import fitz  # PyMuPDF
 from pptx import Presentation
@@ -104,6 +110,7 @@ def create_slide(prs: Presentation, title: str, bullets: List[str], images: List
     slide = prs.slides.add_slide(slide_layout)
     slide.shapes.title.text = title
 
+
     body_placeholder = slide.shapes.placeholders[1]
     body_placeholder.left = Inches(0.5)
     body_placeholder.top = Inches(1.5)
@@ -111,16 +118,27 @@ def create_slide(prs: Presentation, title: str, bullets: List[str], images: List
     body_placeholder.height = Inches(4.5)
     body = body_placeholder.text_frame
     body.clear()
+
     for point in bullets:
         p = body.add_paragraph()
         p.text = point
         p.level = 0
+
         p.font.size = Pt(SETTINGS.get("font_size", 24))
 
     if images:
         img_bytes, ext = images[0]
         image_stream = io.BytesIO(img_bytes)
         slide.shapes.add_picture(image_stream, Inches(5.6), Inches(1.5), height=Inches(4))
+
+
+def _add_bullet_slides(prs: Presentation, title: str, bullets: List[str], images: List[bytes]):
+    """Create one or more slides ensuring bullet lists fit."""
+    MAX_BULLETS = 5
+    for idx in range(0, len(bullets), MAX_BULLETS):
+        group = bullets[idx : idx + MAX_BULLETS]
+        slide_title = title if idx == 0 else f"{title} (cont.)"
+        create_slide(prs, slide_title, group, images if idx == 0 else [])
 
 
 def _add_bullet_slides(prs: Presentation, title: str, bullets: List[str], images: List[bytes]):
@@ -153,6 +171,7 @@ def summarize_text(
 
     """Use Azure OpenAI to summarize text into bullet points."""
     system_prompt = SYSTEM_PROMPT
+
     max_words = SETTINGS.get("max_words_per_bullet", 10)
     if "{max_words}" in system_prompt:
         system_prompt = system_prompt.replace("{max_words}", str(max_words))
@@ -160,6 +179,7 @@ def summarize_text(
         system_prompt = system_prompt.replace("{language}", language or "the original language")
     elif language:
         system_prompt = f"{system_prompt}\nRespond in {language}."
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": text},
@@ -247,6 +267,45 @@ def evaluate_image_relevance(
         return 0.0
 
 
+
+=======
+def evaluate_image_relevance(
+    page_text: str,
+    image: bytes,
+    ext: str,
+    client: AzureOpenAI,
+    deployment: str,
+    *,
+    max_tokens: int = 8,
+) -> bool:
+    """Decide via LLM whether an image is relevant to the accompanying text."""
+
+    b64 = base64.b64encode(image).decode("utf-8")
+    mime = f"data:image/{ext};base64,{b64}"
+    messages = [
+        {"role": "system", "content": IMAGE_PROMPT},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": page_text},
+                {"type": "image_url", "image_url": {"url": mime}},
+            ],
+        },
+    ]
+    try:
+        response = client.chat.completions.create(
+            model=deployment,
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+        answer = response.choices[0].message.content.strip().lower()
+        return answer.startswith("y")
+    except Exception:
+        return False
+
+
+
+
 def pdf_to_ppt(
     pdf_path: str,
     output_path: str,
@@ -258,6 +317,7 @@ def pdf_to_ppt(
     sections = []
     min_score = SETTINGS.get("min_image_score", 5)
     for page_num, text, images in extract_pages(pdf_path):
+
         title = generate_title(text, client, deployment, language=language)
         bullets = summarize_text(text, client, deployment, language=language)
         best_img = None
@@ -268,6 +328,7 @@ def pdf_to_ppt(
                 best_score = score
                 best_img = (img_bytes, ext)
         relevant_images = [best_img] if best_img and best_score >= min_score else []
+
 
         sections.append((title, bullets, relevant_images))
     save_presentation(sections, output_path)

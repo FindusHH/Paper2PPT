@@ -9,17 +9,21 @@ from pdf_to_ppt import (
     detect_pdf_language,
     load_prompt,
     save_prompt,
+
     IMAGE_PROMPT_PATH,
     TITLE_PROMPT_PATH,
     load_settings,
 )
 
 
+
 CONFIG_FILE = "config.json"
+
 
 SETTINGS = load_settings()
 LANGUAGE_OPTIONS = SETTINGS.get("languages", {})
 LANGUAGE_NAMES = {v: k for k, v in LANGUAGE_OPTIONS.items()}
+
 
 TRANSLATIONS = {
     "en": {
@@ -133,6 +137,7 @@ if edit_prompt:
 
 uploaded_file = st.file_uploader(TR["upload"], type=["pdf"])
 
+
 language_code = ""
 if uploaded_file:
     if (
@@ -146,15 +151,19 @@ if uploaded_file:
         st.session_state["file_name"] = uploaded_file.name
     detected_code = st.session_state.get("pdf_lang", "en")
     detected_name = LANGUAGE_NAMES.get(detected_code, detected_code)
+
     st.write(f"{TR['detected']}: {detected_name}")
     options = [f"PDF language ({detected_name})"] + list(LANGUAGE_OPTIONS.keys())
     choice = st.selectbox(TR["summarization"], options)
+
     if choice.startswith("PDF"):
         language_code = detected_code
     else:
         language_code = LANGUAGE_OPTIONS[choice]
 
+
 if st.button(TR["generate"]) and uploaded_file:
+
     with open("input.pdf", "wb") as f:
         f.write(uploaded_file.read())
 
