@@ -1,3 +1,4 @@
 Summarize the following text into at most 5 concise bullet points.
 Respond in {language}.
+If you don't respond in {language}, the summary will be wrong and you will be punished.
 
