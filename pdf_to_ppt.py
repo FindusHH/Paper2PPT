@@ -2,6 +2,25 @@ import io
 import os
 from typing import List
 
+# Path to the system prompt used for summarization
+PROMPT_FILE = os.path.join(os.path.dirname(__file__), "prompts", "summarize.txt")
+
+
+def _load_prompt() -> str:
+    """Load the system prompt from the prompts directory."""
+    try:
+        with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        # Fallback prompt if the file does not exist
+        return (
+            "Summarize the following text into at most 5 concise bullet points."
+            "Respond with a bullet list in the same language as the text."
+        )
+
+
+SYSTEM_PROMPT = _load_prompt()
+
 import fitz  # PyMuPDF
 from pptx import Presentation
 from pptx.util import Inches
@@ -55,10 +74,7 @@ from openai import AzureOpenAI
 def summarize_text(text: str, client: AzureOpenAI, deployment: str, max_tokens: int = 256) -> List[str]:
 
     """Use Azure OpenAI to summarize text into bullet points."""
-    system_prompt = (
-        "Summarize the following text into at most 5 concise bullet points."
-        "Respond with a bullet list in the same language as the text."
-    )
+    system_prompt = SYSTEM_PROMPT
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": text},
