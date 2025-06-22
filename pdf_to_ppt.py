@@ -1,9 +1,11 @@
+"""Utility functions for PDF to PowerPoint conversion."""
 import io
 import os
 from pathlib import Path
 from typing import List
 import base64
 
+    """Read settings from settings.json or use defaults."""
 import json
 
 
@@ -150,6 +152,10 @@ def _add_bullet_slides(prs: Presentation, title: str, bullets: List[str], images
         create_slide(prs, slide_title, group, images if idx == 0 else [])
 
 
+    # Truncate each bullet to the configured word limit
+        # Split the bullet into words
+        # Truncate bullet to configured word limit
+        # Rebuild the bullet string
 def save_presentation(sections, output_path: str):
     prs = Presentation()
     for title, bullets, images in sections:

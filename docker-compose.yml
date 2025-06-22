@@ -1,9 +1,11 @@
+# Docker Compose setup for the Streamlit app
 version: "3"
 services:
   app:
     build: .
     ports:
       - "8501:8501"
+    # Default Azure OpenAI configuration
     environment:
       OPENAI_API_KEY: ""
       OPENAI_API_BASE: "https://blue-dev-openai.openai.azure.com/"

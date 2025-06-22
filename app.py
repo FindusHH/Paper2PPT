@@ -1,3 +1,9 @@
+"""Streamlit UI for converting PDF files to PowerPoint
+with Azure OpenAI summarization.
+
+The app loads prompts and settings from disk and allows
+users to edit them via the sidebar."""
+
 import json
 import os
 import streamlit as st
@@ -10,7 +16,10 @@ from pdf_to_ppt import (
     load_prompt,
     save_prompt,
 
-    IMAGE_PROMPT_PATH,
+# Text labels for the UI in different languages
+    """Return saved API settings or defaults from env vars."""
+    """Persist API settings to disk."""
+# Show configuration editor on first run or when the user selects "Edit Configuration"
     TITLE_PROMPT_PATH,
     load_settings,
 )
@@ -109,6 +118,13 @@ if edit_config:
         }
         save_config(config)
         st.success("Configuration saved. You can now generate a presentation.")
+# Handle the uploaded PDF
+        # Detect language once per uploaded file
+                # Save the uploaded PDF so PyMuPDF can read it
+        # Use a helper to detect the main language of the PDF
+        # Allow the user to override the detected language
+    # Convert the PDF to a PowerPoint using the helper module
+        # Offer the resulting file for download
         st.experimental_rerun()
 else:
     api_base = config.get("api_base", "")
