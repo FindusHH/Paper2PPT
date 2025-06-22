@@ -1,0 +1,1 @@
+Provide an informative slide title of at most {max_words} words. Respond in {language}.

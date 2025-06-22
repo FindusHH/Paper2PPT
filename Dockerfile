@@ -1,3 +1,4 @@
+# Docker image for running the Paper2PPT app
 FROM python:3.10-slim
 
 WORKDIR /app
