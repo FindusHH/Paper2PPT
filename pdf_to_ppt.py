@@ -9,10 +9,6 @@ from langdetect import detect
 PROMPT_FILE = os.path.join(os.path.dirname(__file__), "prompts", "summarize.txt")
 
 
-
-def load_prompt() -> str:
-
-
 def load_prompt() -> str:
 
     """Load the system prompt from the prompts directory."""
