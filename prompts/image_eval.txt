@@ -1,1 +1,3 @@
-Determine whether the image helps the reader understand the accompanying text. Respond only with "yes" or "no".
+
+Rate how much the image helps understand the accompanying text on a scale from 0 (irrelevant) to 10 (very relevant). Respond with a single number.
+

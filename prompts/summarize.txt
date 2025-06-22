@@ -1,6 +1,5 @@
 Summarize the following text into at most 5 concise bullet points.
-Each bullet point must not have more than 10 words.
-Respond in {language}.
-If you don't respond in {language}, the summary will be wrong and you will be punished.
 
+Each bullet should be no more than {max_words} words.
+Respond in {language}.
 

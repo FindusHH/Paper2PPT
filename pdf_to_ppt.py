@@ -4,12 +4,42 @@ from pathlib import Path
 from typing import List
 import base64
 
+import json
+
+
 from langdetect import detect
 
 # Path to the system prompt used for summarization
 PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "summarize.txt"
 # Path to the image relevance evaluation prompt
 IMAGE_PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "image_eval.txt"
+
+# Path to the slide title prompt
+TITLE_PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "title.txt"
+
+# Settings file controlling language options and formatting
+SETTINGS_FILE = Path(__file__).resolve().parent / "settings.json"
+
+# Default values if the settings file does not exist
+DEFAULT_SETTINGS = {
+    "languages": {
+        "English": "en",
+        "German": "de",
+        "Spanish": "es",
+        "Chinese": "zh",
+    },
+    "font_size": 24,
+    "max_words_per_bullet": 10,
+    "max_words_title": 4,
+}
+
+
+def load_settings() -> dict:
+    if SETTINGS_FILE.exists():
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return DEFAULT_SETTINGS
+
 
 
 def load_prompt(path: Path = PROMPT_PATH) -> str:
@@ -34,36 +64,10 @@ def save_prompt(content: str, path: Path = PROMPT_PATH) -> None:
 SYSTEM_PROMPT = load_prompt()
 IMAGE_PROMPT = load_prompt(IMAGE_PROMPT_PATH)
 
+TITLE_PROMPT = load_prompt(TITLE_PROMPT_PATH)
 
-from langdetect import detect
+SETTINGS = load_settings()
 
-# Path to the system prompt used for summarization
-PROMPT_FILE = os.path.join(os.path.dirname(__file__), "prompts", "summarize.txt")
-
-
-def load_prompt() -> str:
-
-    """Load the system prompt from the prompts directory."""
-    try:
-        with open(PROMPT_FILE, "r", encoding="utf-8") as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        # Fallback prompt if the file does not exist
-        return (
-            "Summarize the following text into at most 5 concise bullet points."
-
-
-            " Respond in {language}."
-        )
-
-
-def save_prompt(content: str) -> None:
-    """Persist the system prompt to disk."""
-    with open(PROMPT_FILE, "w", encoding="utf-8") as f:
-        f.write(content)
-
-
-SYSTEM_PROMPT = load_prompt()
 
 import fitz  # PyMuPDF
 from pptx import Presentation
@@ -106,17 +110,35 @@ def create_slide(prs: Presentation, title: str, bullets: List[str], images: List
     slide = prs.slides.add_slide(slide_layout)
     slide.shapes.title.text = title
 
-    body = slide.shapes.placeholders[1].text_frame
-    body.text = ""
+
+    body_placeholder = slide.shapes.placeholders[1]
+    body_placeholder.left = Inches(0.5)
+    body_placeholder.top = Inches(1.5)
+    body_placeholder.width = Inches(5)
+    body_placeholder.height = Inches(4.5)
+    body = body_placeholder.text_frame
+    body.clear()
+
     for point in bullets:
         p = body.add_paragraph()
         p.text = point
         p.level = 0
-        p.font.size = Pt(32)
 
-    for img_bytes, ext in images:
+        p.font.size = Pt(SETTINGS.get("font_size", 24))
+
+    if images:
+        img_bytes, ext = images[0]
         image_stream = io.BytesIO(img_bytes)
-        slide.shapes.add_picture(image_stream, Inches(1), Inches(3), height=Inches(3))
+        slide.shapes.add_picture(image_stream, Inches(5.6), Inches(1.5), height=Inches(4))
+
+
+def _add_bullet_slides(prs: Presentation, title: str, bullets: List[str], images: List[bytes]):
+    """Create one or more slides ensuring bullet lists fit."""
+    MAX_BULLETS = 5
+    for idx in range(0, len(bullets), MAX_BULLETS):
+        group = bullets[idx : idx + MAX_BULLETS]
+        slide_title = title if idx == 0 else f"{title} (cont.)"
+        create_slide(prs, slide_title, group, images if idx == 0 else [])
 
 
 def _add_bullet_slides(prs: Presentation, title: str, bullets: List[str], images: List[bytes]):
@@ -150,8 +172,11 @@ def summarize_text(
     """Use Azure OpenAI to summarize text into bullet points."""
     system_prompt = SYSTEM_PROMPT
 
+    max_words = SETTINGS.get("max_words_per_bullet", 10)
+    if "{max_words}" in system_prompt:
+        system_prompt = system_prompt.replace("{max_words}", str(max_words))
     if "{language}" in system_prompt:
-        system_prompt = system_prompt.format(language=language or "the original language")
+        system_prompt = system_prompt.replace("{language}", language or "the original language")
     elif language:
         system_prompt = f"{system_prompt}\nRespond in {language}."
 
@@ -168,9 +193,82 @@ def summarize_text(
     content = response.choices[0].message.content
 
     bullets = [line.lstrip("- ").strip() for line in content.splitlines() if line]
-    return bullets
+    trimmed = []
+    for b in bullets:
+        words = b.split()
+        if len(words) > max_words:
+            words = words[:max_words]
+        trimmed.append(" ".join(words))
+    return trimmed
 
 
+def generate_title(
+    text: str,
+    client: AzureOpenAI,
+    deployment: str,
+    *,
+    language: str = "",
+    max_tokens: int = 16,
+) -> str:
+    """Generate a short slide title."""
+
+    max_words = SETTINGS.get("max_words_title", 4)
+    prompt = TITLE_PROMPT
+    if "{max_words}" in prompt:
+        prompt = prompt.replace("{max_words}", str(max_words))
+    if "{language}" in prompt:
+        prompt = prompt.replace("{language}", language or "the original language")
+    elif language:
+        prompt = f"{prompt}\nRespond in {language}."
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": text},
+    ]
+    response = client.chat.completions.create(
+        model=deployment,
+        messages=messages,
+        max_tokens=max_tokens,
+    )
+    return response.choices[0].message.content.strip()
+
+
+def evaluate_image_relevance(
+    page_text: str,
+    image: bytes,
+    ext: str,
+    client: AzureOpenAI,
+    deployment: str,
+    *,
+    max_tokens: int = 8,
+) -> float:
+    """Return an image relevance score between 0 and 10."""
+
+    b64 = base64.b64encode(image).decode("utf-8")
+    mime = f"data:image/{ext};base64,{b64}"
+    messages = [
+        {"role": "system", "content": IMAGE_PROMPT},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": page_text},
+                {"type": "image_url", "image_url": {"url": mime}},
+            ],
+        },
+    ]
+    try:
+        response = client.chat.completions.create(
+            model=deployment,
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+        answer = response.choices[0].message.content.strip()
+        return float(answer)
+    except Exception:
+        return 0.0
+
+
+
+=======
 def evaluate_image_relevance(
     page_text: str,
     image: bytes,
@@ -207,6 +305,7 @@ def evaluate_image_relevance(
 
 
 
+
 def pdf_to_ppt(
     pdf_path: str,
     output_path: str,
@@ -216,14 +315,19 @@ def pdf_to_ppt(
     language: str = "",
 ) -> None:
     sections = []
+    min_score = SETTINGS.get("min_image_score", 5)
     for page_num, text, images in extract_pages(pdf_path):
-        title = f"Page {page_num}"
-        bullets = summarize_text(text, client, deployment, language=language)
 
-        relevant_images = []
+        title = generate_title(text, client, deployment, language=language)
+        bullets = summarize_text(text, client, deployment, language=language)
+        best_img = None
+        best_score = -1.0
         for img_bytes, ext in images:
-            if evaluate_image_relevance(text, img_bytes, ext, client, deployment):
-                relevant_images.append((img_bytes, ext))
+            score = evaluate_image_relevance(text, img_bytes, ext, client, deployment)
+            if score > best_score:
+                best_score = score
+                best_img = (img_bytes, ext)
+        relevant_images = [best_img] if best_img and best_score >= min_score else []
 
 
         sections.append((title, bullets, relevant_images))
