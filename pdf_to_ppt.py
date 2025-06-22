@@ -264,6 +264,8 @@ def generate_title(
         max_tokens=max_tokens,
     )
 
+    """Convert a PDF document to a summarized PowerPoint file."""
+
     content = response.choices[0].message.content
     if content:
         text = content.strip().strip('"')

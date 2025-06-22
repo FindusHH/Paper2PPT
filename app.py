@@ -208,7 +208,8 @@ if uploaded_file:
         st.session_state["file_name"] = uploaded_file.name
     detected_code = st.session_state.get("pdf_lang", "en")
     detected_name = LANGUAGE_NAMES.get(detected_code, detected_code)
-    st.write(f"{TR['detected']}: {detected_name}")
+    def update_progress(done: int, total: int, message: str) -> None:
+        """Update progress widgets while generating slides."""
     # Allow the user to override the detected language for summarization
     options = [f"PDF language ({detected_name})"] + list(LANGUAGE_OPTIONS.keys())
     choice = st.selectbox(TR["summarization"], options)
