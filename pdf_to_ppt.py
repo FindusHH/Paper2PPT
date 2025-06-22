@@ -90,12 +90,17 @@ def extract_pages(pdf_path: str):
         text = page.get_text("text")
         images = []
         for img in page.get_images(full=True):
-            xref = img[0]
-            base_image = doc.extract_image(xref)
-            image_bytes = base_image["image"]
-            ext = base_image["ext"]
-            images.append((image_bytes, ext))
-        yield page_num + 1, text, images
+    body_placeholder.top = Inches(1.0)
+    body_placeholder.height = Inches(4.0)
+    if images:
+        body_placeholder.width = Inches(5)
+        pic_left = Inches(5.6)
+    else:
+        body_placeholder.width = Inches(9)
+        pic_left = None
+        size = min(SETTINGS.get("font_size", 24), 32)
+        p.font.size = Pt(size)
+        slide.shapes.add_picture(image_stream, pic_left, Inches(1.5), height=Inches(4))
     # Close the document to free resources
     doc.close()
 
@@ -161,11 +166,28 @@ def save_presentation(sections, output_path: str):
 
     prs = Presentation()
     # Add each section of content as one or more slides
-    for title, bullets, images in sections:
-        _add_bullet_slides(prs, title, bullets, images)
+    content = response.choices[0].message.content or ""
+    content = response.choices[0].message.content
+    if content:
+        text = content.strip().strip('"')
+        return text
+    return ""
 
-    # Finally write the presentation to disk
+    progress_callback=None,
+    # Reload settings in case they were changed
+    global SETTINGS
+    SETTINGS = load_settings()
 
+    # Determine total page count for progress reporting
+    doc = fitz.open(pdf_path)
+    total_pages = len(doc)
+    doc.close()
+    for idx, (page_num, text, images) in enumerate(extract_pages(pdf_path), 1):
+        if progress_callback:
+            progress_callback(idx, total_pages, f"Page {idx}/{total_pages}")
+
+    if progress_callback:
+        progress_callback(total_pages, total_pages, "Completed")
     prs.save(output_path)
 
 

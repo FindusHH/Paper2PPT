@@ -1,4 +1,4 @@
 Summarize the following text into at most 5 concise bullet points.
 Each bullet should be no more than {max_words} words.
-Respond in {language}.
+Respond strictly in {language}. Using any other language is considered wrong and will be heavily penalized.
 

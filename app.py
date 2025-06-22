@@ -1,4 +1,12 @@
 
+def rerun() -> None:
+    """Compatibility wrapper for Streamlit rerun."""
+    try:
+        st.experimental_rerun()
+    except AttributeError:
+        st.rerun()
+
+
 """Streamlit UI for converting PDF files to PowerPoint
 with Azure OpenAI summarization.
 
@@ -54,21 +62,75 @@ TRANSLATIONS = {
         "summarization": "Idioma del resumen",
     },
     "zh": {
-        "title": "PDF\u8f6cPowerPoint\u6458\u8981",
-        "upload": "\u4e0a\u4f20PDF",
-        "generate": "\u751f\u6210PPT",
-        "detected": "\u68c0\u6d4b\u8bed\u8a00",
-        "summarization": "\u6458\u8981\u8bed\u8a00",
-    },
-}
+processing = st.session_state.get("processing", False)
 
+ui_choice = st.sidebar.selectbox(
+    "UI Language", list(LANGUAGE_OPTIONS.keys()), disabled=processing
+)
+edit_prompt = st.sidebar.checkbox("Edit Prompt", disabled=processing)
+edit_settings = st.sidebar.checkbox("Edit Settings", disabled=processing)
+    edit_config = st.sidebar.checkbox("Edit Configuration", disabled=processing)
+        rerun()
+if edit_settings:
+    SETTINGS = load_settings()
+    font_size = st.number_input(
+        "Font Size", value=SETTINGS.get("font_size", 24), min_value=12, max_value=32
+    )
+    max_words = st.number_input(
+        "Max words per bullet", value=SETTINGS.get("max_words_per_bullet", 10), min_value=1
+    )
+    max_title = st.number_input(
+        "Max words per title", value=SETTINGS.get("max_words_title", 4), min_value=1
+    )
+    min_score = st.number_input(
+        "Min image relevance score", value=SETTINGS.get("min_image_score", 5), min_value=0, max_value=10
+    )
+    if st.button("Save Settings"):
+        SETTINGS.update(
+            {
+                "font_size": int(font_size),
+                "max_words_per_bullet": int(max_words),
+                "max_words_title": int(max_title),
+                "min_image_score": float(min_score),
+            }
+        )
+        with open("settings.json", "w", encoding="utf-8") as f:
+            json.dump(SETTINGS, f, indent=2)
+        st.success("Settings saved.")
 
-def load_config():
-    """Return saved API settings or defaults from env vars."""
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {
+uploaded_file = st.file_uploader(TR["upload"], type=["pdf"], disabled=processing)
+generate = st.button(TR["generate"], disabled=processing)
+
+log_box = st.empty()
+progress_bar = st.progress(0)
+log_messages = []
+
+if generate and uploaded_file:
+    st.session_state["processing"] = True
+
+    pdf_name = os.path.splitext(uploaded_file.name)[0]
+    output_path = f"{pdf_name}_summary.pptx"
+
+    def update_progress(done, total, message):
+        percent = int(done / total * 100)
+        log_messages.append(f"{message} ({percent}%)")
+        log_box.text_area("Progress", "\n".join(log_messages), height=200)
+        progress_bar.progress(percent)
+
+        pdf_to_ppt(
+            "input.pdf",
+            output_path,
+            client,
+            deployment,
+            language=language_code,
+            progress_callback=update_progress,
+        )
+    st.session_state["processing"] = False
+    progress_bar.progress(100)
+    log_messages.append("Done")
+    log_box.text_area("Progress", "\n".join(log_messages), height=200)
+            file_name=output_path,
+            type="primary",
         "api_base": os.getenv("OPENAI_API_BASE", ""),
         "api_key": os.getenv("OPENAI_API_KEY", ""),
         "api_version": os.getenv("OPENAI_API_VERSION", "2023-07-01-preview"),
