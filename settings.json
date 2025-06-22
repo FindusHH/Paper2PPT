@@ -1,0 +1,13 @@
+{
+  "languages": {
+    "English": "en",
+    "German": "de",
+    "Spanish": "es",
+    "Chinese": "zh"
+  },
+  "font_size": 24,
+  "max_words_per_bullet": 10,
+  "max_words_title": 4,
+  "min_image_score": 5,
+  "pages_per_slide": 1
+}
