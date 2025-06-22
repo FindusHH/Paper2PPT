@@ -1,8 +1,10 @@
+
 """Streamlit UI for converting PDF files to PowerPoint
 with Azure OpenAI summarization.
 
 The app loads prompts and settings from disk and allows
 users to edit them via the sidebar."""
+
 
 import json
 import os
@@ -23,6 +25,7 @@ from pdf_to_ppt import (
     detect_pdf_language,
     load_prompt,
     save_prompt,
+
     IMAGE_PROMPT_PATH,
     TITLE_PROMPT_PATH,
     load_settings,
@@ -59,6 +62,7 @@ TRANSLATIONS = {
         "summarization": "Idioma del resumen",
     },
     "zh": {
+
         "title": "PDF\u8f6cPowerPoint\u6458\u8981",
         "upload": "\u4e0a\u4f20PDF",
         "generate": "\u751f\u6210PPT",
@@ -230,6 +234,7 @@ if generate and uploaded_file:
         azure_endpoint=api_base,
     )
 
+
     pdf_name = os.path.splitext(uploaded_file.name)[0]
     output_path = f"{pdf_name}_summary.pptx"
 
@@ -249,12 +254,14 @@ if generate and uploaded_file:
             progress_callback=update_progress,
         )
 
+
     st.session_state["processing"] = False
     progress_bar.progress(100)
     log_messages.append("Done")
     log_box.text_area("Progress", "\n".join(log_messages), height=200)
 
     with open(output_path, "rb") as f:
+        # Offer the resulting file for download
         st.download_button(
             label="Download PowerPoint",
             data=f,
