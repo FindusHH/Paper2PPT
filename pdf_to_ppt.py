@@ -34,6 +34,37 @@ def save_prompt(content: str, path: Path = PROMPT_PATH) -> None:
 SYSTEM_PROMPT = load_prompt()
 IMAGE_PROMPT = load_prompt(IMAGE_PROMPT_PATH)
 
+
+from langdetect import detect
+
+# Path to the system prompt used for summarization
+PROMPT_FILE = os.path.join(os.path.dirname(__file__), "prompts", "summarize.txt")
+
+
+def load_prompt() -> str:
+
+    """Load the system prompt from the prompts directory."""
+    try:
+        with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        # Fallback prompt if the file does not exist
+        return (
+            "Summarize the following text into at most 5 concise bullet points."
+
+
+            " Respond in {language}."
+        )
+
+
+def save_prompt(content: str) -> None:
+    """Persist the system prompt to disk."""
+    with open(PROMPT_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+SYSTEM_PROMPT = load_prompt()
+
 import fitz  # PyMuPDF
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -118,10 +149,12 @@ def summarize_text(
 
     """Use Azure OpenAI to summarize text into bullet points."""
     system_prompt = SYSTEM_PROMPT
+
     if "{language}" in system_prompt:
         system_prompt = system_prompt.format(language=language or "the original language")
     elif language:
         system_prompt = f"{system_prompt}\nRespond in {language}."
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": text},
@@ -173,6 +206,7 @@ def evaluate_image_relevance(
         return False
 
 
+
 def pdf_to_ppt(
     pdf_path: str,
     output_path: str,
@@ -185,10 +219,12 @@ def pdf_to_ppt(
     for page_num, text, images in extract_pages(pdf_path):
         title = f"Page {page_num}"
         bullets = summarize_text(text, client, deployment, language=language)
+
         relevant_images = []
         for img_bytes, ext in images:
             if evaluate_image_relevance(text, img_bytes, ext, client, deployment):
                 relevant_images.append((img_bytes, ext))
+
 
         sections.append((title, bullets, relevant_images))
     save_presentation(sections, output_path)

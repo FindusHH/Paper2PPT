@@ -9,8 +9,10 @@ from pdf_to_ppt import (
     detect_pdf_language,
     load_prompt,
     save_prompt,
+
     IMAGE_PROMPT_PATH,
 )
+
 
 
 CONFIG_FILE = "config.json"
@@ -46,7 +48,9 @@ st.title("PDF to PowerPoint Summary")
 
 config = load_config()
 
+
 edit_prompt = st.sidebar.checkbox("Edit Prompt")
+
 
 # Show configuration editor if no config is present or user requests it
 edit_config = False
@@ -80,6 +84,7 @@ else:
     api_version = config.get("api_version", "2023-07-01-preview")
     deployment = config.get("deployment", "")
 
+
 if edit_prompt:
     current_summary = load_prompt()
     current_image = load_prompt(IMAGE_PROMPT_PATH)
@@ -93,6 +98,7 @@ if edit_prompt:
         save_prompt(new_summary)
         save_prompt(new_image, IMAGE_PROMPT_PATH)
         st.success("Prompts saved.")
+
 
 uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
 

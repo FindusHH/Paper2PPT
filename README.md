@@ -15,6 +15,16 @@ This application converts a PDF document into a summarized PowerPoint presentati
 - The summarization language can be chosen (detected from the PDF, German, English, Spanish or Chinese by default).
 - Both the system prompt and API configuration can be edited from the sidebar.
 
+- All prompts are stored in text files inside `prompts/` and loaded at application start.
+- API credentials are persisted in `config.json` after the first run.
+
+- The summarization language can be chosen (detected from the PDF, German,
+  English, Spanish or Chinese by default).
+- Both the system prompt and API configuration can be edited from the sidebar.
+
+
+=======
+
 ## Usage
 
 1. Build and start the service:
@@ -28,3 +38,4 @@ docker compose up --build
 3. Upload a PDF and generate the presentation. The resulting PowerPoint file can be downloaded directly from the interface.
 
 To add more summarization languages, edit the `LANGUAGE_OPTIONS` dictionary in `app.py`.
+
