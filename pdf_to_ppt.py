@@ -1,16 +1,17 @@
 import io
 import os
+from pathlib import Path
 from typing import List
 
 
-from langdetect import detect
+PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "summarize.txt"
 
 
+def load_prompt(path: Path = PROMPT_PATH) -> str:
+        with open(path, "r", encoding="utf-8") as f:
 
-
-
-def load_prompt() -> str:
-
+def save_prompt(content: str, path: Path = PROMPT_PATH) -> None:
+    with open(path, "w", encoding="utf-8") as f:
     """Load the system prompt from the prompts directory."""
     try:
         with open(PROMPT_FILE, "r", encoding="utf-8") as f:

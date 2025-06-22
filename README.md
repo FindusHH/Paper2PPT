@@ -8,7 +8,7 @@ This application converts a PDF document into a summarized PowerPoint presentati
 - Generates a PowerPoint presentation with up to five bullet points per slide and relevant images.
 - Simple web interface built with Streamlit.
 - Runs inside Docker and can be orchestrated with Docker Compose.
-
+- All prompts are stored in text files inside `prompts/` and loaded at application start. The default summarization prompt lives in `prompts/summarize.txt` and can be edited from the sidebar.
 - All prompts are stored in text files inside `prompts/` and loaded at application start.
 - API credentials are persisted in `config.json` after the first run.
 - The summarization language can be chosen (detected from the PDF, German, English, Spanish or Chinese by default).
