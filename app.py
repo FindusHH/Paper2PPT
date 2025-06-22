@@ -1,3 +1,11 @@
+
+"""Streamlit UI for converting PDF files to PowerPoint
+with Azure OpenAI summarization.
+
+The app loads prompts and settings from disk and allows
+users to edit them via the sidebar."""
+
+
 import json
 import os
 import streamlit as st
@@ -16,15 +24,13 @@ from pdf_to_ppt import (
 )
 
 
-
 CONFIG_FILE = "config.json"
-
 
 SETTINGS = load_settings()
 LANGUAGE_OPTIONS = SETTINGS.get("languages", {})
 LANGUAGE_NAMES = {v: k for k, v in LANGUAGE_OPTIONS.items()}
 
-
+# Text labels for the UI in different languages
 TRANSLATIONS = {
     "en": {
         "title": "PDF to PowerPoint Summary",
@@ -58,6 +64,7 @@ TRANSLATIONS = {
 
 
 def load_config():
+    """Return saved API settings or defaults from env vars."""
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -70,6 +77,7 @@ def load_config():
 
 
 def save_config(data: dict):
+    """Persist API settings to disk."""
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
@@ -82,9 +90,10 @@ st.title(TR["title"])
 
 config = load_config()
 
+# Sidebar switch to allow editing of the LLM prompts
 edit_prompt = st.sidebar.checkbox("Edit Prompt")
 
-# Show configuration editor if no config is present or user requests it
+# Show configuration editor on first run or when the user selects "Edit Configuration"
 edit_config = False
 if not os.path.exists(CONFIG_FILE):
     st.info("Please enter your Azure OpenAI configuration.")
@@ -92,6 +101,7 @@ if not os.path.exists(CONFIG_FILE):
 else:
     edit_config = st.sidebar.checkbox("Edit Configuration")
 
+# When editing is enabled show input fields for all settings
 if edit_config:
     api_base = st.text_input("Azure OpenAI API Base", value=config.get("api_base", ""))
     api_key = st.text_input("Azure OpenAI API Key", type="password", value=config.get("api_key", ""))
@@ -111,12 +121,14 @@ if edit_config:
         st.success("Configuration saved. You can now generate a presentation.")
         st.experimental_rerun()
 else:
+    # Use the previously saved configuration values
     api_base = config.get("api_base", "")
     api_key = config.get("api_key", "")
     api_version = config.get("api_version", "2023-07-01-preview")
     deployment = config.get("deployment", "")
 
 if edit_prompt:
+    # Load current prompt texts so they can be edited in the sidebar
     current_summary = load_prompt()
     current_image = load_prompt(IMAGE_PROMPT_PATH)
     current_title = load_prompt(TITLE_PROMPT_PATH)
@@ -137,30 +149,31 @@ if edit_prompt:
 
 uploaded_file = st.file_uploader(TR["upload"], type=["pdf"])
 
-
 language_code = ""
+# When a PDF is uploaded we detect its main language
 if uploaded_file:
     if (
+        # Detect language once per uploaded file
         "pdf_lang" not in st.session_state
         or st.session_state.get("file_name") != uploaded_file.name
     ):
+        # Save the file so PyMuPDF can read it
         with open("input.pdf", "wb") as f:
             f.write(uploaded_file.read())
+        # Use a helper to detect the main language of the PDF
         detected = detect_pdf_language("input.pdf")
         st.session_state["pdf_lang"] = detected
         st.session_state["file_name"] = uploaded_file.name
     detected_code = st.session_state.get("pdf_lang", "en")
     detected_name = LANGUAGE_NAMES.get(detected_code, detected_code)
-
     st.write(f"{TR['detected']}: {detected_name}")
+    # Allow the user to override the detected language for summarization
     options = [f"PDF language ({detected_name})"] + list(LANGUAGE_OPTIONS.keys())
     choice = st.selectbox(TR["summarization"], options)
-
     if choice.startswith("PDF"):
         language_code = detected_code
     else:
         language_code = LANGUAGE_OPTIONS[choice]
-
 
 if st.button(TR["generate"]) and uploaded_file:
 
@@ -168,6 +181,7 @@ if st.button(TR["generate"]) and uploaded_file:
         f.write(uploaded_file.read())
 
 
+    # Initialize the OpenAI client with our settings
     client = AzureOpenAI(
         api_key=api_key,
         api_version=api_version,
@@ -175,11 +189,14 @@ if st.button(TR["generate"]) and uploaded_file:
     )
 
     output_path = "output.pptx"
+    # Convert the PDF to a PowerPoint using the helper module
+    # Perform the heavy conversion work
     with st.spinner("Processing PDF..."):
         pdf_to_ppt("input.pdf", output_path, client, deployment, language=language_code)
 
 
     with open(output_path, "rb") as f:
+        # Offer the resulting file for download
         st.download_button(
             label="Download PowerPoint",
             data=f,

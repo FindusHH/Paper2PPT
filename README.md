@@ -21,18 +21,7 @@ This application converts a PDF document into a summarized PowerPoint presentati
 - Formatting options like font size and maximum words per bullet are defined in `settings.json`.
 
 
-- All prompts are stored in text files inside `prompts/` and loaded at application start.
-- API credentials are persisted in `config.json` after the first run.
-
-- The summarization language can be chosen (detected from the PDF, German,
-  English, Spanish or Chinese by default).
-- Both the system prompt and API configuration can be edited from the sidebar.
-
-
-
 ## Usage
-
-
 1. Build and start the service:
 
 ```bash
