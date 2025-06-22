@@ -12,6 +12,7 @@ from pdf_to_ppt import (
 )
 
 
+
 CONFIG_FILE = "config.json"
 
 LANGUAGE_OPTIONS = {
@@ -45,7 +46,9 @@ st.title("PDF to PowerPoint Summary")
 
 config = load_config()
 
+
 edit_prompt = st.sidebar.checkbox("Edit Prompt")
+
 
 # Show configuration editor if no config is present or user requests it
 edit_config = False
@@ -79,12 +82,14 @@ else:
     api_version = config.get("api_version", "2023-07-01-preview")
     deployment = config.get("deployment", "")
 
+
 if edit_prompt:
     current_prompt = load_prompt()
     new_prompt = st.text_area("System Prompt", value=current_prompt, height=200)
     if st.button("Save Prompt"):
         save_prompt(new_prompt)
         st.success("Prompt saved.")
+
 
 uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
 

@@ -2,13 +2,19 @@ import io
 import os
 from typing import List
 
+
 from langdetect import detect
 
 # Path to the system prompt used for summarization
 PROMPT_FILE = os.path.join(os.path.dirname(__file__), "prompts", "summarize.txt")
 
 
+
 def load_prompt() -> str:
+
+
+def load_prompt() -> str:
+
     """Load the system prompt from the prompts directory."""
     try:
         with open(PROMPT_FILE, "r", encoding="utf-8") as f:
@@ -17,6 +23,8 @@ def load_prompt() -> str:
         # Fallback prompt if the file does not exist
         return (
             "Summarize the following text into at most 5 concise bullet points."
+
+
             " Respond in {language}."
         )
 
@@ -113,10 +121,12 @@ def summarize_text(
 
     """Use Azure OpenAI to summarize text into bullet points."""
     system_prompt = SYSTEM_PROMPT
+
     if "{language}" in system_prompt:
         system_prompt = system_prompt.format(language=language or "the original language")
     elif language:
         system_prompt = f"{system_prompt}\nRespond in {language}."
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": text},
