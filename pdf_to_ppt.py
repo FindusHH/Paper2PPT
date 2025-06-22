@@ -53,7 +53,7 @@ def load_prompt() -> str:
             "Summarize the following text into at most 5 concise bullet points."
 
 
-            " Respond in {language}."
+    body.clear()
         )
 
 
