@@ -9,6 +9,8 @@ from pdf_to_ppt import (
     detect_pdf_language,
     load_prompt,
     save_prompt,
+
+    IMAGE_PROMPT_PATH,
 )
 
 
@@ -84,11 +86,18 @@ else:
 
 
 if edit_prompt:
-    current_prompt = load_prompt()
-    new_prompt = st.text_area("System Prompt", value=current_prompt, height=200)
-    if st.button("Save Prompt"):
-        save_prompt(new_prompt)
-        st.success("Prompt saved.")
+    current_summary = load_prompt()
+    current_image = load_prompt(IMAGE_PROMPT_PATH)
+    new_summary = st.text_area(
+        "Summarization Prompt", value=current_summary, height=200
+    )
+    new_image = st.text_area(
+        "Image Relevance Prompt", value=current_image, height=200
+    )
+    if st.button("Save Prompts"):
+        save_prompt(new_summary)
+        save_prompt(new_image, IMAGE_PROMPT_PATH)
+        st.success("Prompts saved.")
 
 
 uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])

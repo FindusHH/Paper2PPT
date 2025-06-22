@@ -1,6 +1,38 @@
 import io
 import os
+from pathlib import Path
 from typing import List
+import base64
+
+from langdetect import detect
+
+# Path to the system prompt used for summarization
+PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "summarize.txt"
+# Path to the image relevance evaluation prompt
+IMAGE_PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "image_eval.txt"
+
+
+def load_prompt(path: Path = PROMPT_PATH) -> str:
+    """Load the system prompt from the prompts directory."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        # Fallback prompt if the file does not exist
+        return (
+            "Summarize the following text into at most 5 concise bullet points."
+            " Respond in {language}."
+        )
+
+
+def save_prompt(content: str, path: Path = PROMPT_PATH) -> None:
+    """Persist the system prompt to disk."""
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+SYSTEM_PROMPT = load_prompt()
+IMAGE_PROMPT = load_prompt(IMAGE_PROMPT_PATH)
 
 
 from langdetect import detect
@@ -139,6 +171,42 @@ def summarize_text(
     return bullets
 
 
+def evaluate_image_relevance(
+    page_text: str,
+    image: bytes,
+    ext: str,
+    client: AzureOpenAI,
+    deployment: str,
+    *,
+    max_tokens: int = 8,
+) -> bool:
+    """Decide via LLM whether an image is relevant to the accompanying text."""
+
+    b64 = base64.b64encode(image).decode("utf-8")
+    mime = f"data:image/{ext};base64,{b64}"
+    messages = [
+        {"role": "system", "content": IMAGE_PROMPT},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": page_text},
+                {"type": "image_url", "image_url": {"url": mime}},
+            ],
+        },
+    ]
+    try:
+        response = client.chat.completions.create(
+            model=deployment,
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+        answer = response.choices[0].message.content.strip().lower()
+        return answer.startswith("y")
+    except Exception:
+        return False
+
+
+
 def pdf_to_ppt(
     pdf_path: str,
     output_path: str,
@@ -152,6 +220,12 @@ def pdf_to_ppt(
         title = f"Page {page_num}"
         bullets = summarize_text(text, client, deployment, language=language)
 
-        sections.append((title, bullets, images))
+        relevant_images = []
+        for img_bytes, ext in images:
+            if evaluate_image_relevance(text, img_bytes, ext, client, deployment):
+                relevant_images.append((img_bytes, ext))
+
+
+        sections.append((title, bullets, relevant_images))
     save_presentation(sections, output_path)
 

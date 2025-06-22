@@ -1,0 +1,1 @@
+Determine whether the image helps the reader understand the accompanying text. Respond only with "yes" or "no".
