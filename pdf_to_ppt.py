@@ -4,7 +4,6 @@ This module handles extracting content from PDF files,
 interacting with Azure OpenAI to create summaries and titles,
 and building the final PowerPoint presentation."""
 import io
-import os
 from pathlib import Path
 from typing import List
 import base64
