@@ -1,5 +1,4 @@
 # Docker Compose setup for the Streamlit app
-version: "3"
 services:
   app:
     build: .

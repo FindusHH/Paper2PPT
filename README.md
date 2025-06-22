@@ -13,6 +13,8 @@ This application converts a PDF document into a summarized PowerPoint presentati
 - Runs inside Docker and can be orchestrated with Docker Compose.
 - All prompts are stored in text files inside `prompts/` and loaded at application start. The default summarization prompt lives in `prompts/summarize.txt` and can be edited from the sidebar.
 - The relevance check prompt for images resides in `prompts/image_eval.txt` and is also editable.
+- Settings can be edited from the sidebar and persist in `settings.json`.
+- A scrollable log displays the current processing step and progress while creating the PowerPoint file.
 
 - The title creation prompt is stored in `prompts/title.txt`.
 - API credentials are persisted in `config.json` after the first run.
