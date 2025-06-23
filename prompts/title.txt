@@ -1,0 +1,1 @@
+Provide an informative slide title of at most {max_words} words in {language}. Do not use quotation marks. Using any other language is wrong and will be heavily penalized.
