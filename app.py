@@ -73,6 +73,7 @@ TRANSLATIONS = {
 
 
 
+
 def load_config():
     """Return saved API settings or defaults from env vars."""
     if os.path.exists(CONFIG_FILE):

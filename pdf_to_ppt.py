@@ -77,7 +77,6 @@ SYSTEM_PROMPT = load_prompt()
 IMAGE_PROMPT = load_prompt(IMAGE_PROMPT_PATH)
 TITLE_PROMPT = load_prompt(TITLE_PROMPT_PATH)
 
-
 SETTINGS = load_settings()
 
 
@@ -158,8 +157,12 @@ def _add_bullet_slides(prs: Presentation, title: str, bullets: List[str], images
     """Create one or more slides ensuring bullet lists fit."""
 
     # Only five bullets fit on a single slide
-
     MAX_BULLETS = 5
+    # Guard against unexpected None values from upstream code
+    if bullets is None:
+        bullets = []
+
+
     for idx in range(0, len(bullets), MAX_BULLETS):
         group = bullets[idx : idx + MAX_BULLETS]
         slide_title = title if idx == 0 else f"{title} (cont.)"
@@ -204,34 +207,31 @@ def summarize_text(
     elif language:
         system_prompt = f"{system_prompt}\nRespond in {language}."
 
-
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": text},
     ]
 
-    response = client.chat.completions.create(
-        model=deployment,
-        messages=messages,
-        max_tokens=max_tokens,
-    )
-    content = response.choices[0].message.content or ""
+    try:
+        response = client.chat.completions.create(
+            model=deployment,
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+        content = response.choices[0].message.content or ""
 
-    bullets = [line.lstrip("- ").strip() for line in content.splitlines() if line]
-    trimmed = []
-
-    # Truncate each bullet to the configured word limit
-    for b in bullets:
-        # Split the bullet into words
-        words = b.split()
-        # Truncate bullet to configured word limit
-        if len(words) > max_words:
-            words = words[:max_words]
-        # Rebuild the bullet string
-
-        trimmed.append(" ".join(words))
-    # We ask the language model whether the image clarifies the given
-    # page text. The API expects a data URL for the image content.
+        bullets = [line.lstrip("- ").strip() for line in content.splitlines() if line]
+        trimmed = []
+        # Truncate each bullet to the configured word limit
+        for b in bullets:
+            words = b.split()
+            if len(words) > max_words:
+                words = words[:max_words]
+            trimmed.append(" ".join(words))
+        return trimmed
+    except Exception:
+        # In case of API failure, return an empty list instead of None
+        return []
 
 
 def generate_title(
@@ -243,6 +243,7 @@ def generate_title(
     max_tokens: int = 16,
 ) -> str:
     """Generate a short slide title."""
+
 
     max_words = SETTINGS.get("max_words_title", 4)
     prompt = TITLE_PROMPT
@@ -259,16 +260,20 @@ def generate_title(
         {"role": "system", "content": prompt},
         {"role": "user", "content": text},
     ]
-    response = client.chat.completions.create(
-        model=deployment,
-        messages=messages,
-        max_tokens=max_tokens,
-    )
 
-    content = response.choices[0].message.content
-    if content:
-        text = content.strip().strip('"')
-        return text
+    try:
+        response = client.chat.completions.create(
+            model=deployment,
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+        content = response.choices[0].message.content
+        if content:
+            text = content.strip().strip('"')
+            return text
+    except Exception:
+        # Fall back to empty title on API error
+        pass
     return ""
 
 
@@ -283,7 +288,10 @@ def evaluate_image_relevance(
     max_tokens: int = 8,
 ) -> float:
     """Return an image relevance score between 0 and 10."""
-    # The API expects a base64 encoded data URL for the image
+
+    # We ask the language model whether the image clarifies the given
+    # page text. The API expects a data URL for the image content.
+
     b64 = base64.b64encode(image).decode("utf-8")
     mime = f"data:image/{ext};base64,{b64}"
     # Combine the page text and the image into a single chat request
@@ -333,7 +341,6 @@ def pdf_to_ppt(
     global SETTINGS
     SETTINGS = load_settings()
 
-
     # Collect (title, bullets, [image]) tuples for each group of pages
 
     sections = []
@@ -363,6 +370,7 @@ def pdf_to_ppt(
                 best_img = (img_bytes, ext)
 
         relevant_images = [best_img] if best_img and best_score >= min_score else []
+
 
         sections.append((title, bullets, relevant_images))
     # Write all collected slides to the output file
