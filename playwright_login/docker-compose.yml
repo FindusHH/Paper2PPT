@@ -1,5 +1,0 @@
-version: '3.8'
-services:
-  login:
-    build: .
-    command: python login.py
