@@ -12,6 +12,7 @@ import json
 from langdetect import detect
 
 # Location of the text files containing the prompts
+
 # Path to the system prompt used for summarization
 PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "summarize.txt"
 # Path to the image relevance evaluation prompt
@@ -22,7 +23,9 @@ TITLE_PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "title.txt"
 # Settings file controlling language options and formatting
 SETTINGS_FILE = Path(__file__).resolve().parent / "settings.json"
 
+
 # Default values used when settings.json is missing
+
 DEFAULT_SETTINGS = {
     "languages": {
         "English": "en",
@@ -33,17 +36,22 @@ DEFAULT_SETTINGS = {
     "font_size": 24,
     "max_words_per_bullet": 10,
     "max_words_title": 4,
+
     "min_image_score": 5,
     "pages_per_slide": 1,
+
 }
 
 
 def load_settings() -> dict:
+
     """Read settings from settings.json or use defaults."""
+
     if SETTINGS_FILE.exists():
         with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return DEFAULT_SETTINGS
+
 
 
 def load_prompt(path: Path = PROMPT_PATH) -> str:
@@ -71,6 +79,7 @@ TITLE_PROMPT = load_prompt(TITLE_PROMPT_PATH)
 
 SETTINGS = load_settings()
 
+
 import fitz  # PyMuPDF
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -91,6 +100,7 @@ def extract_pages(pdf_path: str):
             ext = base_image["ext"]
             images.append((image_bytes, ext))
         yield page_num + 1, text, images
+
     # Close the document to free resources
     doc.close()
 
@@ -115,6 +125,7 @@ def create_slide(prs: Presentation, title: str, bullets: List[str], images: List
     slide = prs.slides.add_slide(slide_layout)
     slide.shapes.title.text = title
 
+
     body_placeholder = slide.shapes.placeholders[1]
     body_placeholder.left = Inches(0.5)
     body_placeholder.top = Inches(1.0)
@@ -128,10 +139,12 @@ def create_slide(prs: Presentation, title: str, bullets: List[str], images: List
     body = body_placeholder.text_frame
     # Remove any existing text from the placeholder
     body.clear()
+
     for point in bullets:
         p = body.add_paragraph()
         p.text = point
         p.level = 0
+
         size = min(SETTINGS.get("font_size", 24), 32)
         p.font.size = Pt(size)
     if images:
@@ -142,11 +155,13 @@ def create_slide(prs: Presentation, title: str, bullets: List[str], images: List
 
 def _add_bullet_slides(prs: Presentation, title: str, bullets: List[str], images: List[bytes]):
     """Create one or more slides ensuring bullet lists fit."""
+
     # Only five bullets fit on a single slide
     MAX_BULLETS = 5
     # Guard against unexpected None values from upstream code
     if bullets is None:
         bullets = []
+
 
     for idx in range(0, len(bullets), MAX_BULLETS):
         group = bullets[idx : idx + MAX_BULLETS]
@@ -159,9 +174,11 @@ def save_presentation(sections, output_path: str):
 
     prs = Presentation()
     # Add each section of content as one or more slides
+
     for title, bullets, images in sections:
         _add_bullet_slides(prs, title, bullets, images)
     # Finally write the presentation to disk
+
     prs.save(output_path)
 
 
@@ -179,7 +196,9 @@ def summarize_text(
 
     """Use Azure OpenAI to summarize text into bullet points."""
     system_prompt = SYSTEM_PROMPT
+
     # Insert the configured word limit into the prompt if needed
+
     max_words = SETTINGS.get("max_words_per_bullet", 10)
     if "{max_words}" in system_prompt:
         system_prompt = system_prompt.replace("{max_words}", str(max_words))
@@ -187,6 +206,7 @@ def summarize_text(
         system_prompt = system_prompt.replace("{language}", language or "the original language")
     elif language:
         system_prompt = f"{system_prompt}\nRespond in {language}."
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": text},
@@ -224,6 +244,7 @@ def generate_title(
 ) -> str:
     """Generate a short slide title."""
 
+
     max_words = SETTINGS.get("max_words_title", 4)
     prompt = TITLE_PROMPT
     # Replace placeholders in the title prompt
@@ -234,10 +255,12 @@ def generate_title(
     elif language:
         prompt = f"{prompt}\nRespond in {language}."
     # Prepare the conversation for the chat completion call
+
     messages = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": text},
     ]
+
     try:
         response = client.chat.completions.create(
             model=deployment,
@@ -254,6 +277,7 @@ def generate_title(
     return ""
 
 
+
 def evaluate_image_relevance(
     page_text: str,
     image: bytes,
@@ -264,8 +288,10 @@ def evaluate_image_relevance(
     max_tokens: int = 8,
 ) -> float:
     """Return an image relevance score between 0 and 10."""
+
     # We ask the language model whether the image clarifies the given
     # page text. The API expects a data URL for the image content.
+
     b64 = base64.b64encode(image).decode("utf-8")
     mime = f"data:image/{ext};base64,{b64}"
     # Combine the page text and the image into a single chat request
@@ -291,6 +317,7 @@ def evaluate_image_relevance(
         return 0.0
 
 
+
 def pdf_to_ppt(
     pdf_path: str,
     output_path: str,
@@ -298,6 +325,7 @@ def pdf_to_ppt(
     deployment: str,
     *,
     language: str = "",
+
     pages_per_slide: int = 1,
     progress_callback=None,
 ) -> None:
@@ -308,14 +336,17 @@ def pdf_to_ppt(
     is used if its relevance surpasses the configured minimum score.
     """
 
+
     # Reload settings in case they were changed
     global SETTINGS
     SETTINGS = load_settings()
 
     # Collect (title, bullets, [image]) tuples for each group of pages
+
     sections = []
     # Minimum relevance score an image must achieve to be used
     min_score = SETTINGS.get("min_image_score", 5)
+
 
     page_data = list(extract_pages(pdf_path))
     total_groups = (len(page_data) + pages_per_slide - 1) // pages_per_slide
@@ -340,9 +371,11 @@ def pdf_to_ppt(
 
         relevant_images = [best_img] if best_img and best_score >= min_score else []
 
+
         sections.append((title, bullets, relevant_images))
     # Write all collected slides to the output file
     save_presentation(sections, output_path)
     if progress_callback:
         progress_callback(total_groups, total_groups, "Completed")
+
 
