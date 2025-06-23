@@ -58,3 +58,17 @@ docker compose up --build
 
 To add more summarization or UI languages, edit the `languages` section in `settings.json`.
 
+
+## Playwright Login Example
+
+The `playwright_login` folder contains a small example that logs into
+`https://serviceteam-witt.kilanka.de` using Playwright. Put your credentials in
+`playwright_login/credentials.json` and run the container:
+
+```bash
+cd playwright_login
+docker compose run --build login
+```
+
+This will launch a headless browser, perform the login and print the page title
+after the login attempt.
